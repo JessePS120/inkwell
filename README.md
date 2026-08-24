@@ -8,6 +8,5 @@ A backlog item is Done when:
 
 ## Process
 
-Inkwell follows an incremental process: one lecture, one incr
-ement.
+Inkwell follows an incremental process: one lecture, one increment.
 See docs/BACKLOG.md for the current product backlog.
