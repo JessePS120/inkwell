@@ -1,5 +1,9 @@
 # Inkwell API Contract — v1
 
+## Types
+UserPublic: { id: string, displayName: string, email: string, isVerified: boolean, createdAt: DateTime }
+  Never includes passwordHash. The User entity itself is never returned by an endpoint.
+
 ## POST /api/auth/register
 Request: { email: string, displayName: string, password: string }
 Success: 201 { user: UserPublic, accessToken: string, refreshToken: string }
