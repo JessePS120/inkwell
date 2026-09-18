@@ -1,58 +1,86 @@
 // client/src/components/PostEditor.jsx
 //
-// Implements the state machine: Idle -> Editing ->
-// Publishing -> Published | Error -> Editing.
+// Lecture 7: same state machine as Lecture 6 (Idle -> Editing ->
+// Publishing -> Error), now with labeled, accessible fieldsand error
+// messaging anchored to the field it concerns (Section 4.2,golden
+// rule "reduce memory load"; Section 4.6, "recognition not recall").
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { getToken } from "../lib/auth";
+const STATES = { IDLE: "idle", EDITING: "editing", PUBLISHING: "publishing" };
 
-const STATES = { IDLE: "idle", EDITING: "editing", PUBLISHIN
-G: "publishing", ERROR: "error" };
-
-export function PostEditor({ onPublished }) {
-    const [status, setStatus] = useState(STATES.IDLE);
-    const [title, setTitle] = useState("");
-    const [body, setBody] = useState("");
-    const [errorMessage, setErrorMessage] = useState(null);
-    async function handlePublish() {
-        setStatus(STATES.PUBLISHING);
-        setErrorMessage(null);
+export function PostEditor() {
+const [status, setStatus] = useState(STATES.IDLE);
+const [title, setTitle] = useState("");
+const [body, setBody] = useState("");
+const [errorMessage, setErrorMessage] = useState(null);
+const navigate = useNavigate();
+async function handlePublish() {
+    setStatus(STATES.PUBLISHING);
+    setErrorMessage(null);
     try {
         const response = await fetch("/api/posts", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ title, body }),
+        method: "POST",
+        headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${getToken()}`,
+    },
+    body: JSON.stringify({ title, body }),
     });
-
     if (!response.ok) {
-        const { error } = await response.json();
-        setErrorMessage(error.message);
-        setStatus(STATES.EDITING);
-        return;
-    }
-    const post = await response.json();
-    onPublished?.(post);
-    } catch {
-    setErrorMessage("Something went wrong. Please try again.");
+    const { error } = await response.json();
+    setErrorMessage(error.message);
     setStatus(STATES.EDITING);
+    return;
+ }
+ navigate("/"); // Section 5.2: confirm by showing the published post in the feed
+    } catch {
+        setErrorMessage("Something went wrong. Please try again.");
+        setStatus(STATES.EDITING);
     }
-}
-
-return (
+ }
+ return (
+    <form
+    className="space-y-4" onSubmit={(e) => { e.preventDefault(); handlePublish();
+    }}
+    >
     <div>
-        <input
-        value={title}
-        onChange={(e) => { setTitle(e.target.value); setStatus(STATES.EDITING); }}
-        placeholder="Post title"
-        />
-    <textarea
-        value={body}
-        onChange={(e) => { setBody(e.target.value); setStatus
-        (STATES.EDITING); }}
-        placeholder="Write your post..."
+        <label htmlFor="post-title" className="block text-sm
+        font-medium text-gray-700">
+            Title
+        </label>
+    <input
+    id="post-title"
+    value={title}
+    onChange={(e) => { setTitle(e.target.value); setStatus(STATES.EDITING); }}
+    className="mt-1 block w-full rounded border-gray-300 shadow-sm"
+    aria-describedby={errorMessage ? "post-error" : undefined}
     />
-    {errorMessage && <p role="alert">{errorMessage}</p>}
-    <button onClick={handlePublish} disabled={status === STATES.PUBLISHING}>
-        {status === STATES.PUBLISHING ? "Publishing…" : "Publish"}
-        </button>
     </div>
+        <div>
+        <label htmlFor="post-body" className="block text-sm font-medium text-gray-700">
+        Body
+        </label>
+    <textarea
+        id="post-body"
+        value={body}
+        onChange={(e) => { setBody(e.target.value); setStatus(STATES.EDITING); }}
+        rows={10}
+        className="mt-1 block w-full rounded border-gray-300 shadow-sm"
+        />
+    </div>
+    {errorMessage && (
+        <p id="post-error" role="alert" className="text-sm te
+        xt-red-600">
+        {errorMessage}
+    </p>
+    )}
+    <button
+        type="submit"
+        disabled={status === STATES.PUBLISHING}
+        className="rounded bg-indigo-600 px-4 py-2 text-white disabled:opacity-50">
+        {status === STATES.PUBLISHING ? "Publishing…" : "Publish"}
+    </button>
+    </form>
     );
 }
