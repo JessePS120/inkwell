@@ -30,18 +30,13 @@ export const PostRepository = {
   async findPublished({ page, pageSize }) {
     const rows = await prisma.post.findMany({
       where: { status: "PUBLISHED" },
-      include: { author: true },
+      include: { author: { select: { id: true, displayName: true } } },
       orderBy: { publishedAt: "desc" },
       skip: (page - 1) * pageSize,
       take: pageSize + 1, // fetch one extra row to compute hasMore
     });
     const hasMore = rows.length > pageSize;
-    return {
-      posts: rows
-        .slice(0, pageSize)
-        .map((post) => ({ ...post, author: toPublicUser(post.author) })),
-      hasMore,
-    };
+    return { posts: rows.slice(0, pageSize), hasMore };
   },
 
   async searchPublished({ query, page, pageSize }) {
@@ -54,17 +49,12 @@ export const PostRepository = {
     };
     const rows = await prisma.post.findMany({
       where,
-      include: { author: true },
+      include: { author: { select: { id: true, displayName: true } } },
       orderBy: { publishedAt: "desc" },
       skip: (page - 1) * pageSize,
       take: pageSize + 1,
     });
     const hasMore = rows.length > pageSize;
-    return {
-      posts: rows
-        .slice(0, pageSize)
-        .map((post) => ({ ...post, author: toPublicUser(post.author) })),
-      hasMore,
-    };
+    return { posts: rows.slice(0, pageSize), hasMore };
   },
 };

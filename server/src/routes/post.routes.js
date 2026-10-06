@@ -18,14 +18,14 @@ res.status(201).json(post);
         });
     }
 });
-router.get("/posts", async (req, res) => {
-    const { page = 1, search } = req.query;
-    const result = search
-    ? await PostService.search({ query: search, page: Number
-    (page) })
-    : await PostService.listPublished({ page: Number(page)
-    });
-    res.status(200).json(result);
+router.get("/posts", async (req, res, next) => {
+    try {
+        const page = Number(req.query.page) || 1;
+        const result = await PostService.listPublished({ page });
+        res.status(200).json(result);
+    } catch (err) {
+        next(err);
+    }
 });
 
 export default router;
