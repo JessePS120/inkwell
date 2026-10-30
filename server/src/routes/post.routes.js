@@ -4,6 +4,8 @@ import { requireAuth } from "../middleware/auth.middleware.js";
 
 const router = Router();
 
+export const MAX_PAGE_SIZE = 50;
+
 // server/src/routes/post.routes.js — AFTER (hardened)
 router.post("/posts", requireAuth, async (req, res, next) => {
   try {
@@ -21,11 +23,24 @@ router.post("/posts", requireAuth, async (req, res, next) => {
 
 router.get("/posts", async (req, res, next) => {
   try {
-    const { page = 1, search } = req.query;
+    const { page = 1, pageSize = 10, search } = req.query;
+
+    const size = Number(pageSize);
+
+    if (!Number.isInteger(size) || size < 1 || size > MAX_PAGE_SIZE) {
+      return res.status(400).json({
+        error: {
+          code: "INVALID_PAGE_SIZE",
+          message: `pageSize has to be a integer between 1 and ${MAX_PAGE_SIZE}.`,
+        },
+      });
+    }
+
     const result = search
-      ? await PostService.search({ query: search, page: Number(page) })
-      : await PostService.listPublished({ page: Number(page) });
+      ? await PostService.search({ query: search, page: Number(page), pageSize: size })
+      : await PostService.listPublished({ page: Number(page), pageSize: size });
     res.status(200).json(result);
+    
   } catch (err) {
     next(err);
   }

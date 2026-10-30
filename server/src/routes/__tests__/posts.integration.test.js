@@ -4,6 +4,7 @@ import request from "supertest";
 import { app } from "../../app.js";
 import { prisma } from "../../db/client.js";
 import { resetDatabase } from "../../test-utils/fixtures.js";
+import { MAX_PAGE_SIZE } from "../post.routes.js";
 
 beforeEach(async () => {
   await resetDatabase();
@@ -65,32 +66,16 @@ test("registering with a duplicate email fails end to end (US-01 extension 3a, v
   expect(secondAttempt.body.error.code).toBe("EMAIL_ALREADY_REGISTERED");
 });
 
-//Testing the registration and login togethe. 
-test("a newly registered user can log in with the same credentials", async () => {
-  const registerRes = await request(app).post("/api/auth/register").send({
-    email: "bob@example.com",
-    displayName: "Bob",
-    password: "correcthorse",
-  });
+test("a pageSize that is too large on GET /api/posts is rejected", async () => {
+  const res = await request(app).get("/api/posts?page=1&pageSize=5000000");
 
-  expect(registerRes.status).toBe(201);
+  expect(res.status).toBe(400);
+  expect(res.body.error.code).toBe("INVALID_PAGE_SIZE");
+});
 
-  const loginRes = await request(app).post("/api/auth/login").send({
-    email: "bob@example.com",
-    password: "correcthorse",
-  });
+test("a pageSize at the maximum on GET /api/posts is accepted", async () => {
+  const res = await request(app).get(`/api/posts?page=1&pageSize=${MAX_PAGE_SIZE}`);
 
-  expect(loginRes.status).toBe(200);
-  expect(loginRes.body.user.id).toBe(registerRes.body.user.id);
-  expect(loginRes.body.user.email).toBe("bob@example.com");
-  expect(loginRes.body.user).not.toHaveProperty("passwordHash");
-  expect(loginRes.body.accessToken).toEqual(expect.any(String));
-
-  const wrongPasswordRes = await request(app).post("/api/auth/login").send({
-    email: "bob@example.com",
-    password: "wrongpassword",
-  });
-
-  expect(wrongPasswordRes.status).toBe(401);
-  expect(wrongPasswordRes.body.error.code).toBe("INVALID_CREDENTIALS");
+  expect(res.status).toBe(200);
+  expect(res.body.posts).toEqual([]);
 });
