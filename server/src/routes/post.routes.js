@@ -40,7 +40,6 @@ router.get("/posts", async (req, res, next) => {
       ? await PostService.search({ query: search, page: Number(page), pageSize: size })
       : await PostService.listPublished({ page: Number(page), pageSize: size });
     res.status(200).json(result);
-    
   } catch (err) {
     next(err);
   }

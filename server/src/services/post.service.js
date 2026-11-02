@@ -8,7 +8,6 @@ import { EventBus } from "../events/event-bus.js";
 const searchStrategy = SubstringSearchStrategy; // swap this line to change search behavior system-wide
 
 export const PostService = {
-
   async publish({ authorId, title, body, tagNames = [] }) {
     assertNonEmpty(title, "title", "MISSING_TITLE");
     assertNonEmpty(body, "body", "MISSING_BODY");
@@ -42,5 +41,13 @@ export const PostService = {
 
   async search({ query, page = 1, pageSize = 10 }) {
     return searchStrategy.search(query, { page, pageSize });
+  },
+
+  async getById(id) {
+    return PostRepository.findById(id);
+  },
+
+  async delete(id) {
+    return PostRepository.deleteById(id);
   },
 };

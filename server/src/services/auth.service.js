@@ -6,6 +6,8 @@ import bcrypt from "bcrypt";
 import { UserRepository } from "../repositories/user.repository.js";
 import { assertNonEmpty, ValidationError } from "../utils/validation.js";
 import { TokenService } from "./token.service.js";
+import { logger } from "../lib/logger.js";
+import { toPublicUser } from "../dto/user.dto.js";
 
 class EmailAlreadyRegisteredError extends Error {}
 class WeakPasswordError extends Error {}
@@ -14,14 +16,10 @@ class InvalidCredentialsError extends Error {}
 const BCRYPT_COST_FACTOR = 10; // see Lecture 15 for the security tradeoff this number encodes
 const MIN_PASSWORD_LENGTH = 8;
 
-export function toPublicUser(user) {
-  return {
-    id: user.id,
-    email: user.email,
-    displayName: user.displayName,
-    isVerified: user.isVerified,
-    createdAt: user.createdAt,
-  };
+// The authenticated user's view of themselves: the public DTO plus their
+// own email. Never use this for other users (e.g. post authors).
+function toSelfUser(user) {
+  return { ...toPublicUser(user), email: user.email };
 }
 
 export const AuthService = {
@@ -52,28 +50,33 @@ export const AuthService = {
     }
 
     const tokens = TokenService.issueTokens(user);
-    return { user: toPublicUser(user), ...tokens };
+    // Lecture 22: return only the public fields (Lecture 16's DTO), never
+    // the database row, which includes passwordHash. The user's own email
+    // is added back here only: they are the one receiving it.
+    return { user: toSelfUser(user), ...tokens };
   },
 
   async login({ email, password }) {
     const user = await UserRepository.findByEmail(email);
-    if (!user) {
-      throw new InvalidCredentialsError();
-    }
-
-    const matches = await bcrypt.compare(password, user.passwordHash);
-    if (!matches) {
+    if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
+      // fix: a structured, leveled, machine-parseable log
+      // line — searchable by "event" or "email" once aggregated
+      // , not just a free-form sentence buried in scrollback.
+      logger.warn(
+        { event: "auth.login.failed", email },
+        "Failed login attempt",
+      );
       throw new InvalidCredentialsError();
     }
 
     const tokens = TokenService.issueTokens(user);
-    return { user: toPublicUser(user), ...tokens };
+    return { user: toSelfUser(user), ...tokens };
   },
 };
 
 export {
-EmailAlreadyRegisteredError,
-WeakPasswordError,
-InvalidCredentialsError,
-ValidationError,
+  EmailAlreadyRegisteredError,
+  WeakPasswordError,
+  InvalidCredentialsError,
+  ValidationError,
 };
